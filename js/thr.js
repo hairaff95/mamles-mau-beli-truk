@@ -7,6 +7,24 @@ const NOMINALS_DEFAULT = Object.freeze([
     Object.freeze({ value: 'Rp 10.000', raw: 10000, msg: 'Wah, banyak banget! Berkah selalu' }),
 ]);
 
+// ===== iOS-safe scroll lock =====
+let _scrollY = 0;
+let _lockCount = 0; // counter agar tidak di-unlock prematur saat 2 overlay terbuka
+function lockScroll() {
+    _lockCount++;
+    if (_lockCount > 1) return; // sudah terkunci
+    _scrollY = window.scrollY;
+    document.body.style.top = `-${_scrollY}px`;
+    document.body.classList.add('scroll-locked');
+}
+function unlockScroll() {
+    _lockCount = Math.max(0, _lockCount - 1);
+    if (_lockCount > 0) return; // masih ada overlay lain
+    document.body.classList.remove('scroll-locked');
+    document.body.style.top = '';
+    window.scrollTo(0, _scrollY);
+}
+
 function formatRupiah(raw) {
     return 'Rp ' + raw.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
@@ -260,7 +278,9 @@ function showClaimForm() {
     // Tutup modal game, buka modal form
     document.getElementById('thrOverlay').classList.remove('active');
     document.getElementById('claimOverlay').classList.add('active');
-    document.body.style.overflow = 'hidden';
+    // scroll klaim overlay ke atas
+    const co = document.getElementById('claimOverlay');
+    if (co) co.scrollTop = 0;
     setTimeout(() => document.getElementById('inputNama').focus(), 350);
 }
 
@@ -269,7 +289,7 @@ function backToGame() {
     if (_currentNominal) {
         document.getElementById('thrOverlay').classList.add('active');
     } else {
-        document.body.style.overflow = '';
+        unlockScroll();
     }
 }
 async function submitClaim() {
@@ -331,7 +351,7 @@ async function submitClaim() {
         const kuota = window.__thrKuota || _adminKuota;
         if (Array.isArray(allRows) && allRows.length >= kuota) {
             document.getElementById('claimOverlay').classList.remove('active');
-            document.body.style.overflow = '';
+            unlockScroll();
             lockTHRButtonFull();
             showToast('Maaf, kuota THR sudah habis.');
             return;
@@ -641,14 +661,14 @@ async function checkQuotaAndOpen() {
         // Kalau gagal fetch, tetap buka (fallback)
     }
     document.getElementById('thrOverlay').classList.add('active');
-    document.body.style.overflow = 'hidden';
+    lockScroll();
     buildKetupatGrid();
 }
 
 function closeTHR() {
     document.getElementById('thrOverlay').classList.remove('active');
     document.getElementById('claimOverlay').classList.remove('active');
-    document.body.style.overflow = '';
+    unlockScroll();
 }
 
 function handleOverlayClick(e) {
@@ -751,6 +771,7 @@ let _adminKuota = _kuotaBase + _kuotaSaved;
     const panel = document.getElementById('adminPanel');
     if (!panel) return;
     panel.style.display = 'flex';
+    lockScroll();
     adminMuatData();
 })();
 
@@ -874,6 +895,7 @@ async function adminResetLokal() {
     localStorage.removeItem('thrClaimed');
     localStorage.removeItem('thrPlayed');
     document.getElementById('adminPanel').style.display = 'none';
+    unlockScroll();
     location.reload();
 }
 

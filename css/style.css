@@ -27,6 +27,13 @@
             overscroll-behavior-y: none;
         }
 
+        /* iOS-safe scroll lock: simpan posisi scroll, lock body */
+        body.scroll-locked {
+            position: fixed;
+            width: 100%;
+            overflow-y: scroll; /* pertahankan lebar scrollbar agar tidak shift */
+        }
+
         /* Fix hitam saat overscroll/pull-to-refresh di iOS & Android */
         html {
             background: #071A0F;
@@ -907,9 +914,12 @@
             backdrop-filter: blur(14px);
             z-index: 9000;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
             padding: 20px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.4s ease;
@@ -924,6 +934,7 @@
         .thr-modal {
             width: 100%;
             max-width: 520px;
+            margin: auto; /* tetap tengah saat konten lebih pendek dari viewport */
             background: linear-gradient(160deg, rgba(13,50,30,0.98) 0%, rgba(5,14,8,0.98) 100%);
             border: 1.5px solid rgba(240,208,128,0.45);
             border-radius: 32px;
@@ -1868,8 +1879,12 @@
     background: rgba(0,0,0,0.75);
     z-index: 1100;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
+    padding: 16px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
@@ -1886,8 +1901,7 @@
     border-radius: 20px;
     padding: 28px 24px 24px;
     width: min(400px, 92vw);
-    max-height: 90vh;
-    overflow-y: auto;
+    margin: auto; /* tetap tengah saat konten lebih pendek dari viewport */
     position: relative;
     box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,168,76,0.1);
     transform: scale(0.92) translateY(16px);
