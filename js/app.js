@@ -64,8 +64,43 @@ async function copyText() {
     }
 }
 
-function downloadCard() {
-    showToast('Fitur simpan segera hadir! 🚀');
+async function downloadCard() {
+    const card = document.querySelector('.card');
+    if (!card) { showToast('Kartu tidak ditemukan'); return; }
+
+    const btn = document.querySelector('[onclick="downloadCard()"]');
+    const originalHTML = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;stroke:currentColor;stroke-width:2;stroke-linecap:round;">
+                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+            </svg> Menyimpan...`;
+        btn.disabled = true;
+    }
+
+    try {
+        const canvas = await html2canvas(card, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#071A0F',
+            logging: false,
+        });
+
+        const link = document.createElement('a');
+        link.download = 'kartu-idul-fitri-1447.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showToast('Kartu berhasil disimpan!');
+    } catch (e) {
+        console.error(e);
+        showToast('Gagal menyimpan kartu');
+    } finally {
+        if (btn) {
+            btn.innerHTML = originalHTML;
+            btn.disabled = false;
+        }
+    }
 }
 
 function showToast(msg) {
