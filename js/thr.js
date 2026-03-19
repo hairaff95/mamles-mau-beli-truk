@@ -8,12 +8,12 @@ const NOMINALS = Object.freeze([
 ]);
 
 const K_COLORS = Object.freeze([
-    ['#2E8B57','#1A5C38'],
-    ['#C9A84C','#8B6914'],
-    ['#2E8B57','#1A5C38'],
-    ['#C9A84C','#8B6914'],
-    ['#2E8B57','#1A5C38'],
-    ['#C9A84C','#8B6914'],
+    ['#8FD06E','#5BA842'],
+    ['#8FD06E','#5BA842'],
+    ['#8FD06E','#5BA842'],
+    ['#8FD06E','#5BA842'],
+    ['#8FD06E','#5BA842'],
+    ['#8FD06E','#5BA842'],
 ]);
 
 let gameActive       = false;
@@ -29,26 +29,76 @@ function shuffleArray(arr) {
     return a;
 }
 function ketupatSVG(color1, color2) {
-    const id = color1.replace('#', '');
+    // Flat woven ketupat — diamond body with neck top & fork bottom
+    const light = color1;   // lighter green (checkerboard light)
+    const dark  = color2;   // darker green  (checkerboard dark)
     return `
-    <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;">
+    <svg viewBox="0 0 100 130" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;">
         <defs>
-            <radialGradient id="kg${id}" cx="40%" cy="35%" r="65%">
-                <stop offset="0%" stop-color="${color1}" stop-opacity="0.9"/>
-                <stop offset="100%" stop-color="${color2}" stop-opacity="1"/>
-            </radialGradient>
+            <clipPath id="bodyClip">
+                <!-- Diamond body rounded -->
+                <path d="M50 18 Q50 18 85 62 Q85 66 50 104 Q15 66 15 62 Q15 58 50 18Z"/>
+            </clipPath>
+            <clipPath id="neckClip">
+                <rect x="41" y="2" width="18" height="22" rx="4"/>
+            </clipPath>
+            <clipPath id="fork1Clip">
+                <polygon points="30,102 43,102 37,120 24,120"/>
+            </clipPath>
+            <clipPath id="fork2Clip">
+                <polygon points="57,102 70,102 76,120 63,120"/>
+            </clipPath>
         </defs>
-        <path d="M40 4 L76 40 L40 76 L4 40 Z" fill="url(#kg${id})" stroke="${color2}" stroke-width="1.5"/>
-        <path d="M13 28 Q40 22 67 28" stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="none"/>
-        <path d="M7 40 Q40 33 73 40"  stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="none"/>
-        <path d="M13 52 Q40 58 67 52" stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="none"/>
-        <path d="M28 13 Q22 40 28 67" stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="none"/>
-        <path d="M40 7 Q33 40 40 73"  stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="none"/>
-        <path d="M52 13 Q58 40 52 67" stroke="rgba(255,255,255,0.2)" stroke-width="1" fill="none"/>
-        <path d="M40 4 L76 40 L40 76 L4 40 Z" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2.5"/>
-        <circle cx="40" cy="40" r="10" fill="rgba(255,255,255,0.07)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
-        <text x="40" y="45" text-anchor="middle" font-size="13" font-weight="800"
-              fill="rgba(255,255,255,0.6)" font-family="Plus Jakarta Sans, sans-serif">?</text>
+
+        <!-- === NECK === -->
+        <rect x="41" y="2" width="18" height="22" rx="4" fill="${dark}"/>
+        <!-- neck weave stripes -->
+        <g clip-path="url(#neckClip)">
+            <rect x="41" y="2"  width="18" height="5"  fill="${light}" opacity="0.5"/>
+            <rect x="41" y="12" width="18" height="5"  fill="${light}" opacity="0.5"/>
+            <rect x="41" y="22" width="18" height="5"  fill="${light}" opacity="0.5"/>
+        </g>
+
+        <!-- === DIAMOND BODY — base fill === -->
+        <path d="M50 18 Q50 18 85 62 Q85 66 50 104 Q15 66 15 62 Q15 58 50 18Z" fill="${light}"/>
+
+        <!-- === WOVEN GRID inside diamond === -->
+        <g clip-path="url(#bodyClip)">
+            <!-- diagonal strips going ↗ direction (dark) -->
+            <line x1="5"   y1="102" x2="58"  y2="14"  stroke="${dark}" stroke-width="14" opacity="0.55"/>
+            <line x1="22"  y1="110" x2="78"  y2="18"  stroke="${dark}" stroke-width="14" opacity="0.55"/>
+            <line x1="40"  y1="116" x2="96"  y2="24"  stroke="${dark}" stroke-width="14" opacity="0.55"/>
+            <line x1="58"  y1="120" x2="110" y2="36"  stroke="${dark}" stroke-width="14" opacity="0.55"/>
+            <!-- diagonal strips going ↘ direction (dark) -->
+            <line x1="4"   y1="20"  x2="62"  y2="110" stroke="${dark}" stroke-width="14" opacity="0.55"/>
+            <line x1="22"  y1="14"  x2="80"  y2="116" stroke="${dark}" stroke-width="14" opacity="0.55"/>
+            <line x1="42"  y1="10"  x2="96"  y2="104" stroke="${dark}" stroke-width="14" opacity="0.55"/>
+            <line x1="60"  y1="6"   x2="108" y2="90"  stroke="${dark}" stroke-width="14" opacity="0.55"/>
+        </g>
+
+        <!-- === DIAMOND BODY — border === -->
+        <path d="M50 18 Q50 18 85 62 Q85 66 50 104 Q15 66 15 62 Q15 58 50 18Z"
+              fill="none" stroke="${dark}" stroke-width="2.5" stroke-linejoin="round"/>
+
+        <!-- === QUESTION MARK (hidden after open via k-top opacity) === -->
+        <text x="50" y="68" text-anchor="middle" dominant-baseline="middle"
+              font-size="26" font-weight="900" fill="rgba(255,255,255,0.75)"
+              font-family="Plus Jakarta Sans, Arial, sans-serif"
+              style="text-shadow:0 2px 8px rgba(0,0,0,0.4)">?</text>
+
+        <!-- === FORK BOTTOM === -->
+        <polygon points="30,101 43,101 37,120 24,120" fill="${dark}"/>
+        <!-- fork1 weave -->
+        <g clip-path="url(#fork1Clip)">
+            <line x1="24" y1="102" x2="43"  y2="120" stroke="${light}" stroke-width="5" opacity="0.5"/>
+            <line x1="30" y1="102" x2="43"  y2="115" stroke="${light}" stroke-width="5" opacity="0.5"/>
+        </g>
+        <polygon points="57,101 70,101 76,120 63,120" fill="${dark}"/>
+        <!-- fork2 weave -->
+        <g clip-path="url(#fork2Clip)">
+            <line x1="57" y1="102" x2="76"  y2="120" stroke="${light}" stroke-width="5" opacity="0.5"/>
+            <line x1="63" y1="102" x2="76"  y2="115" stroke="${light}" stroke-width="5" opacity="0.5"/>
+        </g>
     </svg>`;
 }
 function buildKetupatGrid() {
@@ -84,6 +134,9 @@ function openKetupat(item, idx, nom) {
 
     // Nonaktifkan semua ketupat lain SEGERA agar tidak bisa diklik ganda
     gameActive = false;
+
+    // Simpan ke localStorage SEKARANG — agar close/refresh tidak bisa main ulang
+    localStorage.setItem('thrPlayed', JSON.stringify({ value: nom.value, ts: Date.now() }));
 
     item.classList.add('opening');
 
@@ -204,13 +257,17 @@ async function submitClaim() {
 
     // Validasi frontend
     let valid = true;
-    if (!nama) {
+    if (!nama || !/^[a-zA-Z\s]+$/.test(nama)) {
+        errNama.textContent = nama ? 'Nama hanya boleh huruf, tanpa angka' : 'Nama wajib diisi';
         errNama.classList.add('show');
         inpNama.classList.add('input-error');
         valid = false;
     }
-    if (!nomor || nomor.replace(/\D/g, '').length < 10) {
-        errNomor.textContent = 'Nomor wajib diisi (min. 10 digit)';
+    const nomorDigits = nomor.replace(/\D/g, '');
+    if (!nomorDigits || !nomorDigits.startsWith('08') || nomorDigits.length < 10 || nomorDigits.length > 13) {
+        errNomor.textContent = !nomorDigits ? 'Nomor wajib diisi' :
+            !nomorDigits.startsWith('08') ? 'Nomor harus diawali 08' :
+            'Nomor HP Indonesia: 10–13 digit';
         errNomor.classList.add('show');
         inpNomor.classList.add('input-error');
         valid = false;
@@ -292,6 +349,7 @@ async function submitClaim() {
         // 3. Sukses — nominal dikunci dari server, tidak bisa diubah
         const claimedAt = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
         localStorage.setItem('thrClaimed', JSON.stringify({ value: nominal, nama, nomor, claimedAt: Date.now() }));
+        localStorage.removeItem('thrPlayed'); // Bersihkan thrPlayed setelah klaim sukses
         _claimData = { nama, nomor, nominal, claimedAt };
 
         // Generate canvas bukti lalu upload ke Supabase Storage
@@ -496,11 +554,9 @@ function kirimWA() {
         ? `${LTR}Asli yah Bang : ${buktiPublicUrl}`
         : `${LTR}Asli yah Bang : (upload gagal, hubungi admin)`;
 
-    // Baris Arab TIDAK diberi marker agar WA deteksi sebagai RTL → rata kanan
-    // Baris latin diberi LTR marker di depan → rata kiri
+    // Semua baris diawali LTR marker — tanpa teks Arab agar WA tidak flip ke RTL
     const pesan = [
-        'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم',
-        'السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ',
+        LTR + 'Assalamualaikum warahmatullahi wabarakatuh',
         '',
         LTR + 'Halo! Saya ingin mengonfirmasi klaim THR Idul Fitri 1447 H',
         '',
@@ -510,8 +566,8 @@ function kirimWA() {
         LTR + 'Waktu        : ' + claimedAt,
         buktiLine,
         '',
-        'تَقَبَّلَ اللَّهُ مِنَّا وَمِنْكُمْ',
         LTR + 'Taqabbalallahu minna wa minkum',
+        LTR + 'Minal aidin wal faizin wal maqbulin',
         LTR + 'Mohon Maaf Lahir & Batin',
         '',
         LTR + 'Selamat Hari Raya Idul Fitri 1447 H!',
@@ -521,6 +577,20 @@ function kirimWA() {
 }
 function openTHR() {
     if (localStorage.getItem('thrClaimed')) return;
+
+    // Sudah buka ketupat tapi belum klaim → langsung ke form klaim dengan nominal lama
+    const played = localStorage.getItem('thrPlayed');
+    if (played) {
+        try {
+            const data = JSON.parse(played);
+            _currentNominal = data.value;
+            showClaimForm();
+        } catch (e) {
+            showClaimForm();
+        }
+        return;
+    }
+
     // Cek kuota dulu sebelum buka modal
     checkQuotaAndOpen();
 }
@@ -607,17 +677,38 @@ function lockTHRButtonFull() {
         }
         return;
     }
+
+    // Sudah buka ketupat tapi belum submit form → ubah tombol jadi "Lanjutkan Klaim"
+    const played = localStorage.getItem('thrPlayed');
+    if (played) {
+        const btn = document.querySelector('.btn-thr');
+        if (btn) {
+            btn.innerHTML = `
+                <span class="thr-icon">🎁</span>
+                Lanjutkan Klaim THR
+                <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:currentColor;
+                     stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;">
+                    <polyline points="9 18 15 12 9 6"/>
+                </svg>`;
+        }
+        return;
+    }
+
     // Cek kuota dari Supabase saat halaman load
     fetch(
         `${SUPABASE_URL}/rest/v1/thr_claims?select=id`,
         { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     ).then(r => r.json()).then(rows => {
-        if (Array.isArray(rows) && rows.length >= (typeof THR_QUOTA !== 'undefined' ? THR_QUOTA : 10)) lockTHRButtonFull();
+        const kuota = window.__thrKuota || _adminKuota;
+        if (Array.isArray(rows) && rows.length >= kuota) lockTHRButtonFull();
     }).catch(() => {});
 })();
 
 // ===== ADMIN PANEL =====
-let _adminKuota = typeof THR_QUOTA !== 'undefined' ? THR_QUOTA : 10;
+// Kuota disimpan di localStorage agar tidak hilang saat reset klaim
+const _kuotaBase = typeof THR_QUOTA !== 'undefined' ? THR_QUOTA : 10;
+const _kuotaSaved = parseInt(localStorage.getItem('thrKuotaCustom')) || 0;
+let _adminKuota = _kuotaBase + _kuotaSaved;
 
 (function initAdminPanel() {
     const params = new URLSearchParams(location.search);
@@ -686,6 +777,9 @@ function adminTambahKuota() {
     const tambah = parseInt(input.value) || 0;
     if (tambah < 1) return;
     _adminKuota += tambah;
+    // Simpan selisih tambahan ke localStorage agar tidak hilang saat reset klaim
+    const prevSaved = parseInt(localStorage.getItem('thrKuotaCustom')) || 0;
+    localStorage.setItem('thrKuotaCustom', prevSaved + tambah);
     const maxEl = document.getElementById('adminKuotaMax');
     if (maxEl) maxEl.textContent = _adminKuota;
     showToast(`Kuota ditambah ${tambah} → total ${_adminKuota}`);
@@ -694,7 +788,9 @@ function adminTambahKuota() {
 }
 
 function adminResetLokal() {
+    // Hapus klaim & played, tapi JANGAN hapus thrKuotaCustom agar kuota tambahan tetap
     localStorage.removeItem('thrClaimed');
+    localStorage.removeItem('thrPlayed');
     document.getElementById('adminPanel').style.display = 'none';
     location.reload();
 }

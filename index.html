@@ -312,7 +312,7 @@
                 <!-- Arabic Greeting -->
                 <div class="arabic-block">
                     <div class="arabic-greeting">تَقَبَّلَ اللّٰهُ مِنَّا وَمِنْكُمْ</div>
-                    <div class="arabic-sub">صِيَامَنَا وَصِيَامَكُمْ</div>
+                    <div class="arabic-sub">تَقَبَّلْ يَا كَرِيْم</div>
                 </div>
 
                 <!-- Divider -->
@@ -345,7 +345,7 @@
                             </svg>
                         </div>
                         <div class="stat-label">Puasa</div>
-                        <div class="stat-value">30 Hari</div>
+                        <div class="stat-value">1 Bulan</div>
                     </div>
                     <div class="stat-chip">
                         <div class="stat-icon">
@@ -406,7 +406,9 @@
             <!-- Countdown Section -->
             <div class="countdown-section">
                 <div class="countdown-card">
-                    <div class="countdown-label">⏳ Countdown Idul Fitri 1447 H</div>
+                    <div class="countdown-label">
+                        Countdown Idul Fitri 1447 H
+                    </div>
                     <div class="countdown-grid">
                         <div class="time-unit">
                             <div class="time-num" id="days">00</div>
@@ -470,8 +472,8 @@
                             </svg>
                         </div>
                         <div class="doa-content">
-                            <div class="doa-arabic">مِنَ الْفَائِزِيْنَ وَالْمَقْبُوْلِيْنَ</div>
-                            <div class="doa-latin">Minal faizin wal maqbulin</div>
+                            <div class="doa-arabic">مِنَ الْعَائِدِيْنَ وَالْفَائِزِيْنَ وَالْمَقْبُوْلِيْنَ</div>
+                            <div class="doa-latin">Minal aidin wal faizin wal maqbulin</div>
                         </div>
                     </div>
                 </div>
@@ -560,13 +562,19 @@
 
         <div class="form-group">
             <label>Nama Lengkap</label>
-            <input type="text" id="inputNama" placeholder="Masukkan nama kamu..." maxlength="60" autocomplete="name"/>
+            <input type="text" id="inputNama" placeholder="Masukkan nama kamu..."
+                   maxlength="60" autocomplete="name"
+                   style="font-size:16px;"
+                   oninput="this.value=this.value.replace(/[^a-zA-Z\s]/g,'')"/>
             <span class="form-error-msg" id="errNama">Nama wajib diisi</span>
         </div>
 
         <div class="form-group">
             <label>No. HP / No. Dana</label>
-            <input type="tel" id="inputNomor" placeholder="Contoh: 08123456789" maxlength="16" autocomplete="tel"/>
+            <input type="tel" id="inputNomor" placeholder="Contoh: 08123456789"
+                   maxlength="13" autocomplete="tel"
+                   style="font-size:16px;"
+                   oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,13)"/>
             <span class="form-error-msg" id="errNomor">Nomor wajib diisi (min. 10 digit)</span>
         </div>
 
@@ -636,7 +644,7 @@
             <input id="adminTambahInput" type="number" min="1" max="50" value="5"
                    style="flex:1;padding:10px 14px;background:rgba(255,255,255,0.08);
                           border:1px solid rgba(201,168,76,0.3);border-radius:10px;
-                          color:#fff;font-size:13px;outline:none;"/>
+                          color:#fff;font-size:16px;outline:none;"/>
             <button onclick="adminTambahKuota()"
                     style="padding:10px 18px;background:rgba(201,168,76,0.2);
                            border:1px solid rgba(201,168,76,0.5);border-radius:10px;
@@ -653,7 +661,7 @@
                 <input id="adminCountdownInput" type="datetime-local"
                        style="flex:1;padding:10px 12px;background:rgba(255,255,255,0.08);
                               border:1px solid rgba(201,168,76,0.3);border-radius:10px;
-                              color:#fff;font-size:12px;outline:none;
+                              color:#fff;font-size:16px;outline:none;
                               color-scheme:dark;"/>
                 <button onclick="adminSetCountdown()"
                         style="padding:10px 14px;background:rgba(201,168,76,0.2);
