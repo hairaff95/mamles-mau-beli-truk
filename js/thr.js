@@ -633,6 +633,20 @@ let _adminKuota = typeof THR_QUOTA !== 'undefined' ? THR_QUOTA : 10;
 async function adminMuatData() {
     const infoEl   = document.getElementById('adminKuotaInfo');
     const daftarEl = document.getElementById('adminDaftarKlaim');
+
+    // Isi input countdown dengan nilai tersimpan
+    const savedTarget  = localStorage.getItem('countdownTarget') || '2026-03-30T00:00:00';
+    const inputCD      = document.getElementById('adminCountdownInput');
+    const currentCDEl  = document.getElementById('adminCountdownCurrent');
+    if (inputCD) {
+        // format untuk datetime-local: YYYY-MM-DDTHH:mm
+        inputCD.value = savedTarget.slice(0, 16);
+    }
+    if (currentCDEl) {
+        const d = new Date(savedTarget);
+        currentCDEl.textContent = `Saat ini: ${d.toLocaleString('id-ID')}`;
+    }
+
     try {
         const res  = await fetch(
             `${SUPABASE_URL}/rest/v1/thr_claims?select=nama,nomor_hp,nominal,claimed_at&order=claimed_at.asc`,
@@ -679,6 +693,22 @@ function adminResetLokal() {
     localStorage.removeItem('thrClaimed');
     document.getElementById('adminPanel').style.display = 'none';
     location.reload();
+}
+
+function adminSetCountdown() {
+    const input = document.getElementById('adminCountdownInput');
+    if (!input || !input.value) { showToast('Pilih tanggal dulu'); return; }
+
+    const newDate = new Date(input.value);
+    if (isNaN(newDate.getTime())) { showToast('Format tanggal tidak valid'); return; }
+
+    localStorage.setItem('countdownTarget', newDate.toISOString());
+
+    // Update label info
+    const currentCDEl = document.getElementById('adminCountdownCurrent');
+    if (currentCDEl) currentCDEl.textContent = `Saat ini: ${newDate.toLocaleString('id-ID')}`;
+
+    showToast(`Target diubah ke ${newDate.toLocaleDateString('id-ID')}`);
 }
 
 (function devResetButton() {

@@ -18,7 +18,8 @@
 })();
 
 function updateCountdown() {
-    const target = new Date('2026-03-30T00:00:00');
+    const saved  = localStorage.getItem('countdownTarget');
+    const target = saved ? new Date(saved) : new Date('2026-03-30T00:00:00');
     const now    = new Date();
     const diff   = target - now;
 

@@ -645,6 +645,27 @@
             </button>
         </div>
 
+        <!-- Atur tanggal countdown -->
+        <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:16px;margin-bottom:16px;">
+            <div style="color:rgba(240,208,128,0.6);font-size:11px;text-transform:uppercase;
+                        letter-spacing:0.5px;margin-bottom:10px;">Tanggal Target Countdown</div>
+            <div style="display:flex;gap:8px;">
+                <input id="adminCountdownInput" type="datetime-local"
+                       style="flex:1;padding:10px 12px;background:rgba(255,255,255,0.08);
+                              border:1px solid rgba(201,168,76,0.3);border-radius:10px;
+                              color:#fff;font-size:12px;outline:none;
+                              color-scheme:dark;"/>
+                <button onclick="adminSetCountdown()"
+                        style="padding:10px 14px;background:rgba(201,168,76,0.2);
+                               border:1px solid rgba(201,168,76,0.5);border-radius:10px;
+                               color:#F0D080;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
+                    Simpan
+                </button>
+            </div>
+            <div id="adminCountdownCurrent"
+                 style="color:rgba(255,255,255,0.35);font-size:11px;margin-top:8px;"></div>
+        </div>
+
         <!-- Reset localStorage sendiri -->
         <button onclick="adminResetLokal()"
                 style="width:100%;padding:10px;background:rgba(255,100,100,0.15);
