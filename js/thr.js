@@ -1,4 +1,4 @@
-const NOMINALS = Object.freeze([
+const NOMINALS_DEFAULT = Object.freeze([
     Object.freeze({ value: 'Rp 2.000',  raw: 2000,  msg: 'Lumayan buat beli jajan!' }),
     Object.freeze({ value: 'Rp 5.000',  raw: 5000,  msg: 'Alhamdulillah, ada rezekinya!' }),
     Object.freeze({ value: 'Rp 10.000', raw: 10000, msg: 'Wah, banyak banget! Berkah selalu' }),
@@ -6,6 +6,36 @@ const NOMINALS = Object.freeze([
     Object.freeze({ value: 'Rp 5.000',  raw: 5000,  msg: 'Alhamdulillah, ada rezekinya!' }),
     Object.freeze({ value: 'Rp 10.000', raw: 10000, msg: 'Wah, banyak banget! Berkah selalu' }),
 ]);
+
+function formatRupiah(raw) {
+    return 'Rp ' + raw.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function getNominalMsg(raw) {
+    if (raw <= 2000)  return 'Lumayan buat beli jajan!';
+    if (raw <= 5000)  return 'Alhamdulillah, ada rezekinya!';
+    if (raw <= 10000) return 'Wah, banyak banget! Berkah selalu';
+    if (raw <= 50000) return 'Subhanallah, rezekinya berlimpah!';
+    return 'MasyaAllah, semoga berkah!';
+}
+
+function getActiveNominals() {
+    try {
+        const saved = localStorage.getItem('thrNominalCustom');
+        if (saved) {
+            const arr = JSON.parse(saved); // [2000, 5000, 10000]
+            if (Array.isArray(arr) && arr.length === 3) {
+                const expanded = [...arr, ...arr]; // 6 ketupat, 2 tiap nominal
+                return expanded.map(raw => ({
+                    value: formatRupiah(raw),
+                    raw,
+                    msg: getNominalMsg(raw)
+                }));
+            }
+        }
+    } catch (e) {}
+    return [...NOMINALS_DEFAULT];
+}
 
 const K_COLORS = Object.freeze([
     ['#8FD06E','#5BA842'],
@@ -102,7 +132,7 @@ function ketupatSVG(color1, color2) {
     </svg>`;
 }
 function buildKetupatGrid() {
-    shuffledNominals = shuffleArray([...NOMINALS]);
+    shuffledNominals = shuffleArray(getActiveNominals());
     const grid = document.getElementById('ketupatGrid');
     grid.innerHTML = '';
 
@@ -725,6 +755,26 @@ async function adminMuatData() {
     const infoEl   = document.getElementById('adminKuotaInfo');
     const daftarEl = document.getElementById('adminDaftarKlaim');
 
+    // Isi input kuota dengan nilai saat ini
+    const kuotaInput = document.getElementById('adminKuotaInput');
+    if (kuotaInput) kuotaInput.value = _adminKuota;
+
+    // Isi input nominal dengan nilai tersimpan
+    try {
+        const savedNom = localStorage.getItem('thrNominalCustom');
+        if (savedNom) {
+            const arr = JSON.parse(savedNom);
+            if (Array.isArray(arr) && arr.length === 3) {
+                const el1 = document.getElementById('adminNom1');
+                const el2 = document.getElementById('adminNom2');
+                const el3 = document.getElementById('adminNom3');
+                if (el1) el1.value = arr[0];
+                if (el2) el2.value = arr[1];
+                if (el3) el3.value = arr[2];
+            }
+        }
+    } catch (e) {}
+
     // Isi input countdown dengan nilai dari Supabase
     try {
         const cdRes   = await fetch(
@@ -772,23 +822,52 @@ async function adminMuatData() {
     }
 }
 
-function adminTambahKuota() {
-    const input = document.getElementById('adminTambahInput');
-    const tambah = parseInt(input.value) || 0;
-    if (tambah < 1) return;
-    _adminKuota += tambah;
-    // Simpan selisih tambahan ke localStorage agar tidak hilang saat reset klaim
-    const prevSaved = parseInt(localStorage.getItem('thrKuotaCustom')) || 0;
-    localStorage.setItem('thrKuotaCustom', prevSaved + tambah);
+function adminUbahKuota() {
+    const input = document.getElementById('adminKuotaInput');
+    const newVal = parseInt(input.value) || 0;
+    if (newVal < 1) { showToast('Kuota minimal 1'); return; }
+    const base = typeof THR_QUOTA !== 'undefined' ? THR_QUOTA : 10;
+    // Simpan selisih dari base ke localStorage
+    const selisih = newVal - base;
+    localStorage.setItem('thrKuotaCustom', selisih);
+    _adminKuota = newVal;
+    window.__thrKuota = _adminKuota;
     const maxEl = document.getElementById('adminKuotaMax');
     if (maxEl) maxEl.textContent = _adminKuota;
-    showToast(`Kuota ditambah ${tambah} → total ${_adminKuota}`);
-    // Update pengecekan kuota secara runtime
-    window.__thrKuota = _adminKuota;
+    showToast(`Kuota diubah menjadi ${_adminKuota}`);
 }
 
-function adminResetLokal() {
-    // Hapus klaim & played, tapi JANGAN hapus thrKuotaCustom agar kuota tambahan tetap
+function adminSimpanNominal() {
+    const n1 = parseInt(document.getElementById('adminNom1').value) || 0;
+    const n2 = parseInt(document.getElementById('adminNom2').value) || 0;
+    const n3 = parseInt(document.getElementById('adminNom3').value) || 0;
+    if (n1 < 1 || n2 < 1 || n3 < 1) { showToast('Semua nominal harus diisi'); return; }
+    localStorage.setItem('thrNominalCustom', JSON.stringify([n1, n2, n3]));
+    showToast(`Nominal disimpan: ${formatRupiah(n1)}, ${formatRupiah(n2)}, ${formatRupiah(n3)}`);
+}
+
+async function adminResetLokal() {
+    const btn = document.getElementById('btnAdminReset');
+    if (btn) { btn.disabled = true; btn.textContent = 'Mereset...'; }
+
+    // Hapus semua data klaim di Supabase
+    try {
+        await fetch(
+            `${SUPABASE_URL}/rest/v1/thr_claims?id=gte.0`,
+            {
+                method: 'DELETE',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Prefer': 'return=minimal',
+                }
+            }
+        );
+    } catch (e) {
+        showToast('Gagal hapus data server, hanya reset lokal');
+    }
+
+    // Hapus klaim & played, tapi JANGAN hapus thrKuotaCustom & thrNominalCustom
     localStorage.removeItem('thrClaimed');
     localStorage.removeItem('thrPlayed');
     document.getElementById('adminPanel').style.display = 'none';
