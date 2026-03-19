@@ -149,21 +149,45 @@ function showResult(nom) {
 
     result.classList.add('show');
     result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
 
-    // Reset form
-    document.getElementById('thrClaimForm').classList.remove('show');
+function showClaimForm() {
+    const nomLabel = document.getElementById('nominalLabel');
+    if (nomLabel) nomLabel.textContent = _currentNominal || '';
+
+    // Reset state form
     document.getElementById('claimSuccessNote').classList.remove('show');
     document.getElementById('btnWaSend').classList.remove('show');
-    document.getElementById('btnSubmitClaim').style.display = 'flex';
-    document.getElementById('inputNama').value   = '';
-    document.getElementById('inputNomor').value  = '';
+    const submitBtn = document.getElementById('btnSubmitClaim');
+    submitBtn.style.display = 'flex';
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;">
+            <polyline points="20 6 9 17 4 12"/>
+        </svg> Kirim Data`;
+    document.getElementById('inputNama').value    = '';
+    document.getElementById('inputNomor').value   = '';
     document.getElementById('inputNama').disabled  = false;
     document.getElementById('inputNomor').disabled = false;
+    document.getElementById('errNama').classList.remove('show');
+    document.getElementById('errNomor').classList.remove('show');
+    document.getElementById('inputNama').classList.remove('input-error');
+    document.getElementById('inputNomor').classList.remove('input-error');
+
+    // Tutup modal game, buka modal form
+    document.getElementById('thrOverlay').classList.remove('active');
+    document.getElementById('claimOverlay').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('inputNama').focus(), 350);
 }
-function showClaimForm() {
-    document.getElementById('thrClaimForm').classList.add('show');
-    document.getElementById('btnKlaimSekarang').style.display = 'none';
-    setTimeout(() => document.getElementById('inputNama').focus(), 300);
+
+function backToGame() {
+    document.getElementById('claimOverlay').classList.remove('active');
+    if (_currentNominal) {
+        document.getElementById('thrOverlay').classList.add('active');
+    } else {
+        document.body.style.overflow = '';
+    }
 }
 async function submitClaim() {
     const nama   = document.getElementById('inputNama').value.trim();
@@ -211,7 +235,21 @@ async function submitClaim() {
     };
 
     try {
-        // 1. Cek duplikat nomor di Supabase
+        // 1. Cek kuota (maks 10 klaim)
+        const quotaRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/thr_claims?select=id`,
+            { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+        );
+        const allRows = await quotaRes.json();
+        if (Array.isArray(allRows) && allRows.length >= 10) {
+            document.getElementById('claimOverlay').classList.remove('active');
+            document.body.style.overflow = '';
+            lockTHRButtonFull();
+            showToast('Maaf, kuota THR sudah habis.');
+            return;
+        }
+
+        // 2. Cek duplikat nomor di Supabase
         const checkRes = await fetch(
             `${SUPABASE_URL}/rest/v1/thr_claims?nomor_hp=eq.${encodeURIComponent(nomor)}&select=id`,
             { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
@@ -250,9 +288,19 @@ async function submitClaim() {
             throw new Error('Gagal menyimpan data ke server');
         }
 
-        // 3. Sukses
+        // 3. Sukses — nominal dikunci dari server, tidak bisa diubah
+        const claimedAt = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
         localStorage.setItem('thrClaimed', JSON.stringify({ value: nominal, nama, nomor, claimedAt: Date.now() }));
-        _claimData = { nama, nomor, nominal };
+        _claimData = { nama, nomor, nominal, claimedAt };
+
+        // Generate canvas bukti lalu upload ke Supabase Storage
+        btn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" style="width:16px;height:16px;stroke:currentColor;stroke-width:2;stroke-linecap:round;">
+                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+            </svg> Membuat bukti...`;
+
+        const buktiPublicUrl = await uploadBuktiKlaim({ nama, nomor, nominal, claimedAt });
+        _claimData.buktiPublicUrl = buktiPublicUrl;
 
         document.getElementById('claimSuccessNote').classList.add('show');
         btn.style.display = 'none';
@@ -260,8 +308,22 @@ async function submitClaim() {
         document.getElementById('inputNama').disabled  = true;
         document.getElementById('inputNomor').disabled = true;
 
+        // Tampilkan preview + link bukti
+        const preview = document.getElementById('buktiPreview');
+        const linkWrap = document.getElementById('buktiLinkWrap');
+        const linkEl   = document.getElementById('buktiLink');
+        if (buktiPublicUrl && preview) {
+            preview.src = buktiPublicUrl;
+            preview.style.display = 'block';
+        }
+        if (buktiPublicUrl && linkWrap && linkEl) {
+            linkEl.href        = buktiPublicUrl;
+            linkEl.textContent = buktiPublicUrl;
+            linkWrap.style.display = 'flex';
+        }
+
         lockTHRButton(nominal);
-        showToast('Data berhasil dikirim! 🎉');
+        showToast('Data berhasil dikirim!');
 
     } catch (err) {
         console.error(err);
@@ -269,31 +331,213 @@ async function submitClaim() {
         resetBtn();
     }
 }
+
+async function uploadBuktiKlaim({ nama, nomor, nominal, claimedAt }) {
+    try {
+        // 1. Buat canvas
+        const dataUrl = await generateBuktiCanvas({ nama, nomor, nominal, claimedAt });
+
+        // 2. Konversi data URL → Blob (tanpa fetch, agar aman di file://)
+        const byteString = atob(dataUrl.split(',')[1]);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+        const blob = new Blob([ab], { type: 'image/png' });
+
+        // 3. Nama file unik berdasarkan nomor HP
+        const fileName = `${nomor.replace(/\D/g,'')}-${Date.now()}.png`;
+
+        // 4. Upload ke Supabase Storage bucket "bukti-thr"
+        const uploadRes = await fetch(
+            `${SUPABASE_URL}/storage/v1/object/bukti-thr/${fileName}`,
+            {
+                method: 'POST',
+                headers: {
+                    'apikey':        SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type':  'image/png',
+                    'x-upsert':      'true',
+                },
+                body: blob,
+            }
+        );
+
+        if (!uploadRes.ok) {
+            const errText = await uploadRes.text();
+            console.error('Upload bukti gagal:', uploadRes.status, errText);
+            return null;
+        }
+
+        // 5. Kembalikan public URL
+        return `${SUPABASE_URL}/storage/v1/object/public/bukti-thr/${fileName}`;
+
+    } catch (e) {
+        console.warn('uploadBuktiKlaim error:', e);
+        return null;
+    }
+}
+
+async function generateBuktiCanvas({ nama, nomor, nominal, claimedAt }) {
+    const W = 600, H = 320;
+    const canvas = document.createElement('canvas');
+    canvas.width  = W * 2;
+    canvas.height = H * 2;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(2, 2);
+
+    // Background
+    const bg = ctx.createLinearGradient(0, 0, W, H);
+    bg.addColorStop(0, '#0D3D2A');
+    bg.addColorStop(1, '#071A0F');
+    ctx.fillStyle = bg;
+    roundRect(ctx, 0, 0, W, H, 16);
+    ctx.fill();
+
+    // Border emas
+    ctx.strokeStyle = 'rgba(201,168,76,0.5)';
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, 1, 1, W - 2, H - 2, 15);
+    ctx.stroke();
+
+    // Header strip
+    const header = ctx.createLinearGradient(0, 0, W, 0);
+    header.addColorStop(0, 'rgba(201,168,76,0.25)');
+    header.addColorStop(1, 'rgba(201,168,76,0.05)');
+    ctx.fillStyle = header;
+    roundRect(ctx, 0, 0, W, 56, 16, true);
+    ctx.fill();
+
+    // Judul
+    ctx.fillStyle = '#F0D080';
+    ctx.font = 'bold 18px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('BUKTI KLAIM THR IDUL FITRI 1447 H', W / 2, 34);
+
+    // Divider
+    ctx.strokeStyle = 'rgba(201,168,76,0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(24, 58); ctx.lineTo(W - 24, 58);
+    ctx.stroke();
+
+    // Nominal box (kanan atas)
+    ctx.fillStyle = 'rgba(201,168,76,0.12)';
+    roundRect(ctx, W - 168, 66, 144, 78, 12);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(201,168,76,0.45)';
+    ctx.lineWidth = 1;
+    roundRect(ctx, W - 168, 66, 144, 78, 12);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(240,208,128,0.65)';
+    ctx.font = '10px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('NOMINAL THR', W - 96, 86);
+    ctx.fillStyle = '#F0D080';
+    ctx.font = 'bold 24px Arial, sans-serif';
+    ctx.fillText(nominal, W - 96, 120);
+
+    // Data rows (kiri)
+    const rows = [
+        ['NAMA',     nama],
+        ['NO. DANA', nomor],
+        ['NOMINAL',  nominal],
+        ['WAKTU',    claimedAt],
+    ];
+    ctx.textAlign = 'left';
+    rows.forEach(([label, value], i) => {
+        const y = 88 + i * 48;
+        ctx.fillStyle = 'rgba(240,208,128,0.55)';
+        ctx.font = '10px Arial, sans-serif';
+        ctx.fillText(label, 32, y);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px Arial, sans-serif';
+        ctx.fillText(value, 32, y + 18);
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(32, y + 28); ctx.lineTo(W - 184, y + 28);
+        ctx.stroke();
+    });
+
+    // Footer
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.font = '10px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Dokumen ini dibuat otomatis oleh sistem', W / 2, H - 12);
+
+    return canvas.toDataURL('image/png');
+}
+function roundRect(ctx, x, y, w, h, r, onlyTop = false) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    if (onlyTop) {
+        ctx.lineTo(x + w, y + h);
+        ctx.lineTo(x, y + h);
+    } else {
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    }
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+}
 function kirimWA() {
     if (!_claimData) return;
-    const { nama, nomor, nominal } = _claimData;
+    const { nama, nomor, nominal, claimedAt, buktiPublicUrl } = _claimData;
 
-    const pesan =
-`✨ بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم ✨
+    const LTR = '\u200E';
 
-السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ
+    const buktiLine = buktiPublicUrl
+        ? `${LTR}Asli yah Bang : ${buktiPublicUrl}`
+        : `${LTR}Asli yah Bang : (upload gagal, hubungi admin)`;
 
-Halo! Saya ingin mengonfirmasi klaim THR Idul Fitri 1447 H 🌙
-
-👤 Nama     : ${nama}
-📱 No. Dana : ${nomor}
-💰 Nominal  : ${nominal}
-
-تَقَبَّلَ اللَّهُ مِنَّا وَمِنْكُمْ
-Taqabbalallahu minna wa minkum
-Mohon Maaf Lahir & Batin 🤲
-
-Selamat Hari Raya Idul Fitri 1447 H! 🎊`;
+    // Baris Arab TIDAK diberi marker agar WA deteksi sebagai RTL → rata kanan
+    // Baris latin diberi LTR marker di depan → rata kiri
+    const pesan = [
+        'بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيم',
+        'السَّلاَمُ عَلَيْكُمْ وَرَحْمَةُ اللهِ وَبَرَكَاتُهُ',
+        '',
+        LTR + 'Halo! Saya ingin mengonfirmasi klaim THR Idul Fitri 1447 H',
+        '',
+        LTR + 'Nama         : ' + nama,
+        LTR + 'No. Dana     : ' + nomor,
+        LTR + 'Nominal      : ' + nominal,
+        LTR + 'Waktu        : ' + claimedAt,
+        buktiLine,
+        '',
+        'تَقَبَّلَ اللَّهُ مِنَّا وَمِنْكُمْ',
+        LTR + 'Taqabbalallahu minna wa minkum',
+        LTR + 'Mohon Maaf Lahir & Batin',
+        '',
+        LTR + 'Selamat Hari Raya Idul Fitri 1447 H!',
+    ].join('\n');
 
     window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(pesan)}`, '_blank');
 }
 function openTHR() {
-    if (localStorage.getItem('thrClaimed')) return; // sudah klaim
+    if (localStorage.getItem('thrClaimed')) return;
+    // Cek kuota dulu sebelum buka modal
+    checkQuotaAndOpen();
+}
+
+async function checkQuotaAndOpen() {
+    try {
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/thr_claims?select=id`,
+            { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+        );
+        const rows = await res.json();
+        if (Array.isArray(rows) && rows.length >= 10) {
+            lockTHRButtonFull();
+            return;
+        }
+    } catch (e) {
+        // Kalau gagal fetch, tetap buka (fallback)
+    }
     document.getElementById('thrOverlay').classList.add('active');
     document.body.style.overflow = 'hidden';
     buildKetupatGrid();
@@ -301,6 +545,7 @@ function openTHR() {
 
 function closeTHR() {
     document.getElementById('thrOverlay').classList.remove('active');
+    document.getElementById('claimOverlay').classList.remove('active');
     document.body.style.overflow = '';
 }
 
@@ -326,13 +571,74 @@ function lockTHRButton(claimedValue) {
             <polyline points="20 6 9 17 4 12"/>
         </svg>`;
 }
+
+function lockTHRButtonFull() {
+    const btn = document.querySelector('.btn-thr');
+    if (!btn) return;
+    btn.classList.add('thr-claimed');
+    btn.disabled = true;
+    btn.innerHTML = `
+        <span class="thr-icon">
+            <svg viewBox="0 0 24 24" fill="none" style="width:20px;height:20px;flex-shrink:0;
+                 stroke:rgba(255,255,255,0.3);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+        </span>
+        Maaf, kamu kurang beruntung :(
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:rgba(255,255,255,0.25);
+             stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>`;
+}
 (function checkTHRClaimed() {
     const claimed = localStorage.getItem('thrClaimed');
-    if (!claimed) return;
-    try {
-        const data = JSON.parse(claimed);
-        lockTHRButton(data.value);
-    } catch (e) {
-        lockTHRButton('THR');
+    if (claimed) {
+        try {
+            const data = JSON.parse(claimed);
+            lockTHRButton(data.value);
+        } catch (e) {
+            lockTHRButton('THR');
+        }
+        return;
     }
+    // Cek kuota dari Supabase saat halaman load
+    fetch(
+        `${SUPABASE_URL}/rest/v1/thr_claims?select=id`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    ).then(r => r.json()).then(rows => {
+        if (Array.isArray(rows) && rows.length >= 10) lockTHRButtonFull();
+    }).catch(() => {});
+})();
+
+(function devResetButton() {
+    const host = location.hostname;
+    const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '';
+    if (!isLocal) return;
+    const btn = document.createElement('button');
+    btn.textContent = 'DEV: Reset Klaim THR';
+    btn.style.cssText = `
+        position: fixed;
+        bottom: 16px;
+        left: 16px;
+        z-index: 9999;
+        background: #ff4444;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        opacity: 0.85;
+        font-family: monospace;
+    `;
+    btn.onclick = () => {
+        localStorage.removeItem('thrClaimed');
+        location.reload();
+    };
+    document.body.appendChild(btn);
 })();
