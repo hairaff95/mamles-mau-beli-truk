@@ -1,17 +1,3 @@
-// ============================================================
-//  thr.js — Game ketupat THR + form klaim + Supabase + WA
-//
-//  KEAMANAN:
-//  - Nominal tidak bisa dipilih/dimanipulasi dari DevTools:
-//    array NOMINALS di-seal (Object.freeze) dan referensi
-//    elemen DOM nominal disembunyikan sampai animasi selesai.
-//  - Validasi duplikat nomor HP dilakukan DI SERVER (Supabase)
-//    via UNIQUE constraint — bukan hanya di frontend.
-//  - Token Supabase dibaca dari config.js yang masuk .gitignore.
-//  - Rate-limit: tombol submit di-disable selama request berjalan.
-// ============================================================
-
-// Nominal dikunci — tidak bisa dimodifikasi dari konsol
 const NOMINALS = Object.freeze([
     Object.freeze({ value: 'Rp 2.000',  raw: 2000,  msg: 'Lumayan buat beli jajan!' }),
     Object.freeze({ value: 'Rp 5.000',  raw: 5000,  msg: 'Alhamdulillah, ada rezekinya!' }),
@@ -32,10 +18,8 @@ const K_COLORS = Object.freeze([
 
 let gameActive       = false;
 let shuffledNominals = [];
-let _currentNominal  = null;  // private — tidak di window
-let _claimData       = null;  // private — tidak di window
-
-// ===== UTILS =====
+let _currentNominal  = null;
+let _claimData       = null;
 function shuffleArray(arr) {
     const a = [...arr];
     for (let i = a.length - 1; i > 0; i--) {
@@ -44,8 +28,6 @@ function shuffleArray(arr) {
     }
     return a;
 }
-
-// ===== SVG KETUPAT =====
 function ketupatSVG(color1, color2) {
     const id = color1.replace('#', '');
     return `
@@ -69,8 +51,6 @@ function ketupatSVG(color1, color2) {
               fill="rgba(255,255,255,0.6)" font-family="Plus Jakarta Sans, sans-serif">?</text>
     </svg>`;
 }
-
-// ===== BUILD GRID =====
 function buildKetupatGrid() {
     shuffledNominals = shuffleArray([...NOMINALS]);
     const grid = document.getElementById('ketupatGrid');
@@ -99,8 +79,6 @@ function buildKetupatGrid() {
     document.getElementById('thrResult').classList.remove('show');
     gameActive = true;
 }
-
-// ===== BUKA KETUPAT =====
 function openKetupat(item, idx, nom) {
     if (!gameActive || item.classList.contains('opened') || item.classList.contains('opening')) return;
 
@@ -132,8 +110,6 @@ function openKetupat(item, idx, nom) {
         }, 800);
     }, 100);
 }
-
-// ===== KONFETI =====
 function spawnConfetti(parent) {
     const wrap   = parent.querySelector('.ketupat-svg-wrap');
     const colors = ['#F0D080','#C9A84C','#2E8B57','#FFE566','#fff'];
@@ -155,8 +131,6 @@ function spawnConfetti(parent) {
         setTimeout(() => c.remove(), 1200);
     }
 }
-
-// ===== SHOW RESULT =====
 function showResult(nom) {
     _currentNominal = nom.value; // simpan di variabel private, bukan window
 
@@ -186,15 +160,11 @@ function showResult(nom) {
     document.getElementById('inputNama').disabled  = false;
     document.getElementById('inputNomor').disabled = false;
 }
-
-// ===== TAMPILKAN FORM KLAIM =====
 function showClaimForm() {
     document.getElementById('thrClaimForm').classList.add('show');
     document.getElementById('btnKlaimSekarang').style.display = 'none';
     setTimeout(() => document.getElementById('inputNama').focus(), 300);
 }
-
-// ===== SUBMIT KLAIM → SUPABASE =====
 async function submitClaim() {
     const nama   = document.getElementById('inputNama').value.trim();
     const nomor  = document.getElementById('inputNomor').value.trim().replace(/\s/g, '');
@@ -299,8 +269,6 @@ async function submitClaim() {
         resetBtn();
     }
 }
-
-// ===== KIRIM KE WHATSAPP =====
 function kirimWA() {
     if (!_claimData) return;
     const { nama, nomor, nominal } = _claimData;
@@ -324,8 +292,6 @@ Selamat Hari Raya Idul Fitri 1447 H! 🎊`;
 
     window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(pesan)}`, '_blank');
 }
-
-// ===== BUKA / TUTUP MODAL =====
 function openTHR() {
     if (localStorage.getItem('thrClaimed')) return; // sudah klaim
     document.getElementById('thrOverlay').classList.add('active');
@@ -341,8 +307,6 @@ function closeTHR() {
 function handleOverlayClick(e) {
     if (e.target === document.getElementById('thrOverlay')) closeTHR();
 }
-
-// ===== KUNCI TOMBOL THR =====
 function lockTHRButton(claimedValue) {
     const btn = document.querySelector('.btn-thr');
     if (!btn) return;
@@ -362,8 +326,6 @@ function lockTHRButton(claimedValue) {
             <polyline points="20 6 9 17 4 12"/>
         </svg>`;
 }
-
-// ===== CEK STATUS KLAIM SAAT HALAMAN DIBUKA =====
 (function checkTHRClaimed() {
     const claimed = localStorage.getItem('thrClaimed');
     if (!claimed) return;

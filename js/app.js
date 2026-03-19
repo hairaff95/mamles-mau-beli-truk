@@ -1,8 +1,3 @@
-// ============================================================
-//  app.js — Logic umum: bintang, countdown, share, copy
-// ============================================================
-
-// ===== GENERATE STARS =====
 (function generateStars() {
     const starsContainer = document.getElementById('stars');
     if (!starsContainer) return;
@@ -22,9 +17,7 @@
     }
 })();
 
-// ===== COUNTDOWN =====
 function updateCountdown() {
-    // Idul Fitri 1447 H — 30 Maret 2026
     const target = new Date('2026-03-30T00:00:00');
     const now    = new Date();
     const diff   = target - now;
@@ -51,7 +44,6 @@ function updateCountdown() {
 setInterval(updateCountdown, 1000);
 updateCountdown();
 
-// ===== SHARE =====
 async function shareCard() {
     const text = `🌙 Taqabbalallahu Minna wa Minkum 🌙\n\nSelamat Hari Raya Idul Fitri 1447 H\nMohon Maaf Lahir & Batin\n\n✨ Semoga amal ibadah kita diterima Allah SWT ✨`;
     if (navigator.share) {
@@ -62,7 +54,6 @@ async function shareCard() {
     }
 }
 
-// ===== COPY =====
 async function copyText() {
     const text = `🌙 Taqabbalallahu Minna wa Minkum 🌙\n\nSelamat Hari Raya Idul Fitri 1447 H\nMohon Maaf Lahir & Batin\n\n✨ Semoga amal ibadah kita diterima Allah SWT ✨`;
     try {
@@ -73,12 +64,10 @@ async function copyText() {
     }
 }
 
-// ===== DOWNLOAD =====
 function downloadCard() {
     showToast('Fitur simpan segera hadir! 🚀');
 }
 
-// ===== TOAST =====
 function showToast(msg) {
     const existing = document.querySelector('.toast');
     if (existing) existing.remove();
