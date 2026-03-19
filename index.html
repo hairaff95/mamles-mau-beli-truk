@@ -9,6 +9,12 @@
     <!-- Phosphor Icons — modern & beautiful icon set -->
     <script src="https://unpkg.com/@phosphor-icons/web@2.1.1/src/index.js"></script>
     <link rel="stylesheet" href="css/style.css">
+    <!-- Config: Supabase Anon Key memang dirancang public, keamanan dijaga oleh RLS di Supabase -->
+    <script>
+        const SUPABASE_URL = 'https://llmthoaijzbjimphvntp.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxsbXRob2FpanpiamltcGh2bnRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MDc2MDEsImV4cCI6MjA4OTQ4MzYwMX0.tytOph_B9MjVoQSmyH1ZfUis2rXq_p66-oHV6bK87jw';
+        const WA_NUMBER    = '6282137563703';
+    </script>
 </head>
 <body>
 
@@ -580,7 +586,6 @@
     </div>
 </div>
 
-<script src="js/config.js"></script>
 <script src="js/app.js"></script>
 <script src="js/thr.js"></script>
     <link rel="stylesheet" href="css/style.css">
@@ -1432,12 +1437,6 @@
             document.getElementById('inputNama').focus();
         }, 300);
     }
-
-    // ===== SUPABASE CONFIG =====
-    // Ganti 3 baris di bawah ini dengan data kamu:
-    const SUPABASE_URL = 'GANTI_DENGAN_URL_SUPABASE_KAMU';       // contoh: https://abcxyz.supabase.co
-    const SUPABASE_KEY = 'GANTI_DENGAN_ANON_KEY_SUPABASE_KAMU';  // contoh: eyJhbGci...
-    const WA_NUMBER    = 'GANTI_DENGAN_NOMOR_WA_KAMU';           // contoh: 628123456789
 
     async function submitClaim() {
         const nama   = document.getElementById('inputNama').value.trim();
