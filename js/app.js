@@ -17,11 +17,25 @@
     }
 })();
 
+let _countdownTarget = new Date('2026-03-30T00:00:00');
+
+// Load target dari Supabase saat halaman pertama buka
+(async function loadCountdownTarget() {
+    try {
+        const res  = await fetch(
+            `${SUPABASE_URL}/rest/v1/settings?key=eq.countdown_target&select=value`,
+            { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+        );
+        const data = await res.json();
+        if (Array.isArray(data) && data[0]?.value) {
+            _countdownTarget = new Date(data[0].value);
+        }
+    } catch (e) {}
+})();
+
 function updateCountdown() {
-    const saved  = localStorage.getItem('countdownTarget');
-    const target = saved ? new Date(saved) : new Date('2026-03-30T00:00:00');
-    const now    = new Date();
-    const diff   = target - now;
+    const now  = new Date();
+    const diff = _countdownTarget - now;
 
     if (diff <= 0) {
         document.getElementById('days').textContent    = '00';

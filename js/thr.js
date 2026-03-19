@@ -634,18 +634,22 @@ async function adminMuatData() {
     const infoEl   = document.getElementById('adminKuotaInfo');
     const daftarEl = document.getElementById('adminDaftarKlaim');
 
-    // Isi input countdown dengan nilai tersimpan
-    const savedTarget  = localStorage.getItem('countdownTarget') || '2026-03-30T00:00:00';
-    const inputCD      = document.getElementById('adminCountdownInput');
-    const currentCDEl  = document.getElementById('adminCountdownCurrent');
-    if (inputCD) {
-        // format untuk datetime-local: YYYY-MM-DDTHH:mm
-        inputCD.value = savedTarget.slice(0, 16);
-    }
-    if (currentCDEl) {
-        const d = new Date(savedTarget);
-        currentCDEl.textContent = `Saat ini: ${d.toLocaleString('id-ID')}`;
-    }
+    // Isi input countdown dengan nilai dari Supabase
+    try {
+        const cdRes   = await fetch(
+            `${SUPABASE_URL}/rest/v1/settings?key=eq.countdown_target&select=value`,
+            { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+        );
+        const cdData  = await cdRes.json();
+        const cdValue = cdData[0]?.value || '2026-03-30T00:00:00.000Z';
+        const inputCD     = document.getElementById('adminCountdownInput');
+        const currentCDEl = document.getElementById('adminCountdownCurrent');
+        if (inputCD) inputCD.value = cdValue.slice(0, 16);
+        if (currentCDEl) {
+            const d = new Date(cdValue);
+            currentCDEl.textContent = `Saat ini: ${d.toLocaleString('id-ID')}`;
+        }
+    } catch (e) {}
 
     try {
         const res  = await fetch(
@@ -695,20 +699,49 @@ function adminResetLokal() {
     location.reload();
 }
 
-function adminSetCountdown() {
+async function adminSetCountdown() {
     const input = document.getElementById('adminCountdownInput');
     if (!input || !input.value) { showToast('Pilih tanggal dulu'); return; }
 
     const newDate = new Date(input.value);
     if (isNaN(newDate.getTime())) { showToast('Format tanggal tidak valid'); return; }
 
-    localStorage.setItem('countdownTarget', newDate.toISOString());
+    const btn = document.querySelector('[onclick="adminSetCountdown()"]');
+    if (btn) { btn.textContent = 'Menyimpan...'; btn.disabled = true; }
 
-    // Update label info
-    const currentCDEl = document.getElementById('adminCountdownCurrent');
-    if (currentCDEl) currentCDEl.textContent = `Saat ini: ${newDate.toLocaleString('id-ID')}`;
+    try {
+        // Upsert ke Supabase — berlaku untuk semua pengunjung
+        const res = await fetch(
+            `${SUPABASE_URL}/rest/v1/settings?key=eq.countdown_target`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'apikey':        SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type':  'application/json',
+                    'Prefer':        'return=minimal',
+                },
+                body: JSON.stringify({ value: newDate.toISOString() }),
+            }
+        );
 
-    showToast(`Target diubah ke ${newDate.toLocaleDateString('id-ID')}`);
+        if (!res.ok) throw new Error(await res.text());
+
+        // Update countdown langsung di halaman ini juga (tanpa reload)
+        if (typeof _countdownTarget !== 'undefined') {
+            window._countdownTarget = newDate;
+        }
+
+        const currentCDEl = document.getElementById('adminCountdownCurrent');
+        if (currentCDEl) currentCDEl.textContent = `Saat ini: ${newDate.toLocaleString('id-ID')}`;
+
+        showToast(`Target diubah ke ${newDate.toLocaleDateString('id-ID')} — berlaku untuk semua!`);
+    } catch (e) {
+        console.error(e);
+        showToast('Gagal menyimpan ke server');
+    } finally {
+        if (btn) { btn.textContent = 'Simpan'; btn.disabled = false; }
+    }
 }
 
 (function devResetButton() {
