@@ -235,13 +235,14 @@ async function submitClaim() {
     };
 
     try {
-        // 1. Cek kuota (maks 10 klaim)
+        // 1. Cek kuota (maks sesuai setting admin)
         const quotaRes = await fetch(
             `${SUPABASE_URL}/rest/v1/thr_claims?select=id`,
             { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
         );
         const allRows = await quotaRes.json();
-        if (Array.isArray(allRows) && allRows.length >= 10) {
+        const kuota = window.__thrKuota || _adminKuota;
+        if (Array.isArray(allRows) && allRows.length >= kuota) {
             document.getElementById('claimOverlay').classList.remove('active');
             document.body.style.overflow = '';
             lockTHRButtonFull();
@@ -531,7 +532,8 @@ async function checkQuotaAndOpen() {
             { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
         );
         const rows = await res.json();
-        if (Array.isArray(rows) && rows.length >= 10) {
+        const kuota = window.__thrKuota || _adminKuota;
+        if (Array.isArray(rows) && rows.length >= kuota) {
             lockTHRButtonFull();
             return;
         }
@@ -610,9 +612,74 @@ function lockTHRButtonFull() {
         `${SUPABASE_URL}/rest/v1/thr_claims?select=id`,
         { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     ).then(r => r.json()).then(rows => {
-        if (Array.isArray(rows) && rows.length >= 10) lockTHRButtonFull();
+        if (Array.isArray(rows) && rows.length >= (typeof THR_QUOTA !== 'undefined' ? THR_QUOTA : 10)) lockTHRButtonFull();
     }).catch(() => {});
 })();
+
+// ===== ADMIN PANEL =====
+let _adminKuota = typeof THR_QUOTA !== 'undefined' ? THR_QUOTA : 10;
+
+(function initAdminPanel() {
+    const params = new URLSearchParams(location.search);
+    const secret = typeof ADMIN_SECRET !== 'undefined' ? ADMIN_SECRET : null;
+    if (!secret || params.get('admin') !== secret) return;
+
+    const panel = document.getElementById('adminPanel');
+    if (!panel) return;
+    panel.style.display = 'flex';
+    adminMuatData();
+})();
+
+async function adminMuatData() {
+    const infoEl   = document.getElementById('adminKuotaInfo');
+    const daftarEl = document.getElementById('adminDaftarKlaim');
+    try {
+        const res  = await fetch(
+            `${SUPABASE_URL}/rest/v1/thr_claims?select=nama,nomor_hp,nominal,claimed_at&order=claimed_at.asc`,
+            { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+        );
+        const rows = await res.json();
+        const total = Array.isArray(rows) ? rows.length : 0;
+
+        infoEl.innerHTML = `
+            <span style="color:#F0D080;font-size:20px;font-weight:700;">${total}</span>
+            <span style="color:rgba(255,255,255,0.5);"> / </span>
+            <span style="color:#F0D080;font-size:20px;font-weight:700;" id="adminKuotaMax">${_adminKuota}</span>
+            <span style="color:rgba(255,255,255,0.5);font-size:13px;"> klaim terpakai</span>`;
+
+        if (!Array.isArray(rows) || rows.length === 0) {
+            daftarEl.innerHTML = '<span style="color:rgba(255,255,255,0.3);">Belum ada klaim</span>';
+            return;
+        }
+        daftarEl.innerHTML = rows.map((r, i) => `
+            <div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.06);
+                        display:flex;justify-content:space-between;gap:8px;">
+                <span style="color:rgba(240,208,128,0.7);min-width:18px;">${i+1}.</span>
+                <span style="flex:1;color:#fff;">${r.nama}</span>
+                <span style="color:rgba(255,255,255,0.5);font-size:11px;">${r.nominal}</span>
+            </div>`).join('');
+    } catch (e) {
+        infoEl.textContent = 'Gagal memuat data';
+    }
+}
+
+function adminTambahKuota() {
+    const input = document.getElementById('adminTambahInput');
+    const tambah = parseInt(input.value) || 0;
+    if (tambah < 1) return;
+    _adminKuota += tambah;
+    const maxEl = document.getElementById('adminKuotaMax');
+    if (maxEl) maxEl.textContent = _adminKuota;
+    showToast(`Kuota ditambah ${tambah} → total ${_adminKuota}`);
+    // Update pengecekan kuota secara runtime
+    window.__thrKuota = _adminKuota;
+}
+
+function adminResetLokal() {
+    localStorage.removeItem('thrClaimed');
+    document.getElementById('adminPanel').style.display = 'none';
+    location.reload();
+}
 
 (function devResetButton() {
     const host = location.hostname;
