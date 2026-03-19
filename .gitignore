@@ -1,0 +1,8 @@
+# ⚠️ File konfigurasi rahasia — JANGAN pernah di-commit
+js/config.js
+
+# Sistem
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
