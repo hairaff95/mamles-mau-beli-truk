@@ -714,12 +714,15 @@ function lockTHRButtonFull() {
         const btn = document.querySelector('.btn-thr');
         if (btn) {
             btn.innerHTML = `
-                <span class="thr-icon">🎁</span>
-                Lanjutkan Klaim THR
-                <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:currentColor;
-                     stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;">
-                    <polyline points="9 18 15 12 9 6"/>
-                </svg>`;
+                <span class="thr-icon">
+                    <svg viewBox="0 0 24 24" fill="none" style="width:20px;height:20px;flex-shrink:0;stroke:#FFE566;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
+                        <line x1="12" y1="2" x2="12" y2="6"/>
+                        <line x1="12" y1="18" x2="12" y2="22"/>
+                    </svg>
+                </span>
+                Lanjutkan Klaim THR`;
         }
         return;
     }
@@ -943,6 +946,7 @@ async function adminSetCountdown() {
     `;
     btn.onclick = () => {
         localStorage.removeItem('thrClaimed');
+        localStorage.removeItem('thrPlayed');
         location.reload();
     };
     document.body.appendChild(btn);
